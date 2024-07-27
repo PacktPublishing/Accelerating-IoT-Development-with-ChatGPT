@@ -1,0 +1,75 @@
+import json
+import boto3
+import logging
+import os
+from botocore.config import Config
+
+# Initialize logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Define AWS region configuration for clients
+aws_region = os.environ.get('AWS_REGION', 'us-west-2')
+config = Config(region_name=aws_region)
+
+# Initialize AWS client for SNS with specified region configuration
+sns_client = boto3.client('sns', config=config)
+
+def format_email_content(received_event):
+
+# Accessing the 'data' sub-dictionary safely
+    data = received_event.get('data', {})
+# Using default values if specific keys aren't present
+    email_content = f"""
+Alert: DHT11 Abnormal Event Detected!
+
+Details:
+- Status: {received_event.get('status')}
+- Device ID: {received_event.get('deviceID')}
+- Device Model: {received_event.get('deviceModel')}
+- Timestamp: {received_event.get('timeStamp')}
+- Date: {received_event.get('date')} 
+- Time: {received_event.get('time')} 
+- TimeZone: {received_event.get('timeZone')}
+- DST: {received_event.get('DST')}
+- Temperature (C): {data.get('temp_C', 'N/A')}°C
+- Temperature (F): {data.get('temp_F', 'N/A')}°F
+- Humidity: {data.get('humidity', 'N/A')}%
+
+Please take the necessary actions !
+    """
+    return email_content
+
+def lambda_handler(received_event, context):
+    try:
+        logger.info("Received event: %s", json.dumps(received_event, indent=4))
+
+        if received_event.get('status') in ['Above Normal', 'Below Normal', 'Sensor Error']:
+            email_content = format_email_content(received_event)
+            device_id = received_event.get('deviceID', 'UnknownDevice')
+            subject = f"Alert: abnormal condition is detected on device-{device_id}"
+            sns_message = json.dumps({
+                "default": email_content,
+                "email": email_content
+            })
+            sns_response = sns_client.publish(
+                TopicArn=os.environ.get('SNS_TOPIC_ARN', 'arn:aws:sns:your_region:your_account_id:DHT11_Abnormal_Event'),
+                MessageStructure='json',
+                Message=sns_message,
+                Subject=subject
+            )
+            message_id = sns_response.get('MessageId')
+            logger.info("SNS notification successfully sent. Message ID: %s", message_id)
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'message': 'Notification sent successfully if condition met'})
+        }
+    except Exception as e:
+        logger.error("An error occurred: %s", str(e))
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Error processing the notification'})
+        }
+
+# Set the environment variables AWS_REGION and SNS_TOPIC_ARN before deploying this Lambda function
