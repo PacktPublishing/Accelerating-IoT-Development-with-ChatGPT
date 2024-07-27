@@ -1,0 +1,14 @@
+SELECT
+status,
+timeStamp,
+deviceModel,
+deviceID,
+date,
+time,
+timeZone,
+DST,
+data.temp_C,
+data.temp_F,
+data.humidity
+FROM dht11_datastore
+ORDER BY timestamp DESC
