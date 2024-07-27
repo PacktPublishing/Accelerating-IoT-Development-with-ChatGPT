@@ -1,0 +1,37 @@
+// Decode payload to JSON
+var received_event = decodeToJson(payload);
+
+// Extract device ID and other telemetry values from JSON
+var deviceID = received_event.deviceID;
+var eventType = received_event.status;
+var deviceType = received_event.deviceModel;
+var temp_c = received_event.data.temp_C;
+var temp_f = received_event.data.temp_F;
+var humidity = received_event.data.humidity;
+
+
+// Create telemetry object with extracted values
+var telemetry = {
+  temp_c: temp_c,
+  temp_f: temp_f,
+  humidity: humidity
+  
+};
+
+// Create result object with device ID and telemetry data
+var result = {
+  eventType: eventType,
+  deviceName: deviceID,
+  deviceType: deviceType,
+  telemetry: telemetry
+
+};
+
+// Helper function to decode JSON
+function decodeToJson(payload) {
+    var str = String.fromCharCode.apply(null, new Uint8Array(payload));
+    var received_event = JSON.parse(str);
+    return received_event
+}
+
+return result;
